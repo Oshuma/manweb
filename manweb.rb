@@ -20,6 +20,14 @@ get '/' do
   haml :index
 end
 
+post '/' do
+  @page_name = params[:page_name]
+  output = %x/man #{@page_name} | col -b/
+  # Doesn't catch stderr, so it will be an empty string if no man page was found.
+  @page_text = output.empty? ? nil : output
+  haml :page
+end
+
 get '/styles.css' do
   content_type 'text/css', :charset => 'utf-8'
   sass :stylesheet
@@ -44,27 +52,45 @@ __END__
 
   %body
     #top-bar
-      %form{:action => '/search', :method => 'post'}
-        %input{:name => 'page', :type => 'text'}
+      #header= TITLE
+      %form{:action => '/', :method => 'post', :id => 'search-form'}
+        %input{:name => 'page_name', :type => 'text', :value => "#{@page_name}"}
         %input{:type => 'submit', :value => 'Search'}
     #man-page
-      = 500.times {haml_concat 'page contents'}
       = yield
 
+
 @@ index
+%p Enter the name of a manual page in the top right search box.
+
+
+@@ page
+- if @page_text
+  %h1== Manual for '#{@page_name}'
+  %pre= @page_text
+- else
+  %p== Could not find manual page for '<strong>#{@page_name}</strong>'.
 
 
 @@ stylesheet
+!main_color = #eee
+
 body
-  :background-color #f5f5f5
+  :background-color = !main_color
   :font
     :family "Helvetica", "Arial", sans-serif
   :margin 0
   :padding 0
 
 #top-bar
-  :background-color #f5f5f5
+  #header
+    :float left
+    :font-weight bold
+    :padding-left 1em
+
+  :background-color = !main_color
   :border-bottom 1px solid #000
+  :line-height 1.5em
   :padding-top 5px
   :padding-bottom 5px
   :position fixed
@@ -77,4 +103,12 @@ body
   :margin auto
   :margin-bottom 10px
   :max-width 900px
-  :padding 40px 10px 10px 10px
+  :padding 45px 10px 10px 10px
+
+  h1
+    :font-size 20px
+    :margin-top 0
+    :text-align center
+
+  pre
+    :margin auto 4em
