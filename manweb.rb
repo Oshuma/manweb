@@ -8,7 +8,8 @@
 }.each { |dep| require dep }
 
 configure do
-  TITLE = 'ManWeb: Manual Page Browser'
+  TITLE = 'ManWeb:'
+  SUBTITLE = 'Manual Page Browser'
 end
 
 
@@ -17,20 +18,40 @@ end
 #
 
 get '/' do
-  haml :index
+  @page_name = params[:page]
+  if @page_name
+    @page_text = man(@page_name)
+    haml :page
+  else
+    haml :index
+  end
 end
 
 post '/' do
   @page_name = params[:page_name]
-  output = %x/man #{@page_name} | col -b/
-  # Doesn't catch stderr, so it will be an empty string if no man page was found.
-  @page_text = output.empty? ? nil : output
+  @page_text = man(@page_name)
   haml :page
 end
 
 get '/styles.css' do
   content_type 'text/css', :charset => 'utf-8'
   sass :stylesheet
+end
+
+
+#
+# == Helpers
+#
+helpers do
+  def title
+    "#{TITLE} #{@page_name ? @page_name : SUBTITLE}"
+  end
+
+  def man(page_name)
+    output = %x/man #{page_name} | col -b/
+    # Doesn't catch stderr, so output will be an empty string if no man page was found.
+    @page_text = output.empty? ? nil : output
+  end
 end
 
 
@@ -46,15 +67,16 @@ __END__
 !!!
 %html
   %head
-    %title= TITLE
+    %title= title
     %link{:rel => 'stylesheet', :href => '/styles.css', :type => 'text/css'}
     %meta{'http-equiv' => 'Content-Type', :content => 'text/html'}
 
   %body
     #top-bar
-      #header= TITLE
+      #header
+        %a{:href => '/'}= title
       %form{:action => '/', :method => 'post', :id => 'search-form'}
-        %input{:name => 'page_name', :type => 'text', :value => "#{@page_name}"}
+        %input{:name => 'page_name', :type => 'text'}
         %input{:type => 'submit', :value => 'Search'}
     #man-page
       = yield
@@ -67,6 +89,8 @@ __END__
 @@ page
 - if @page_text
   %h1== Manual for '#{@page_name}'
+  %p#page-link
+    %a{:href => "/?page=#{@page_name}"}Link to this page
   %pre= @page_text
 - else
   %p== Could not find manual page for '<strong>#{@page_name}</strong>'.
@@ -88,6 +112,13 @@ body
     :font-weight bold
     :padding-left 1em
 
+    a
+      :border-bottom 1px dashed #000
+      :color #000
+      :text-decoration none
+      &:hover
+        :border-bottom 1px solid #000
+
   :background-color = !main_color
   :border-bottom 1px solid #000
   :line-height 1.5em
@@ -107,8 +138,26 @@ body
 
   h1
     :font-size 20px
-    :margin-top 0
+    :margin 0 auto
     :text-align center
 
   pre
-    :margin auto 4em
+    :margin auto 10em
+
+  #page-link
+    :background-color = !main_color
+    :border 1px solid #000
+    :margin 0.75em auto
+    :padding 5px
+    :text-align center
+    :width 50%
+
+    a
+      :color #000
+      :border-bottom 1px dashed #000
+      :text-decoration none
+      &:hover
+        :border-bottom 1px solid #000
+
+p
+  :text-align center
