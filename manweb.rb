@@ -48,7 +48,7 @@ helpers do
   end
 
   def man(page_name)
-    output = %x/man #{page_name} | col -b/
+    output = %x/man '#{page_name}' | col -b/
     # Doesn't catch stderr, so output will be an empty string if no man page was found.
     @page_text = output.empty? ? nil : output
   end
